@@ -3,6 +3,7 @@ package backend.academy;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.net.HttpURLConnection;
 import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -18,7 +19,7 @@ public class LogReader {
         parser = new LogParser();
     }
 
-    private List<LogRecord> readLogFiles(String path) throws IOException {
+    public List<String> readLogFiles(String path) throws IOException {
         if (path.startsWith("https://") || path.startsWith("http://")) {
             return readUrl(path);
         } else {
@@ -26,22 +27,26 @@ public class LogReader {
         }
     }
 
-    private List<LogRecord> readUrl(String url) throws IOException {
-        final List<LogRecord> logRecords = new ArrayList<>();
-        try (BufferedReader reader = new BufferedReader(new InputStreamReader(new URL(url).openStream()))) {
-            String line;
-            while ((line = reader.readLine()) != null) {
-                LogRecord record = parser.parseLine(line);
-                if (record != null) {
-                    logRecords.add(record);
-                }
+    private List<String> readUrl(String url) throws IOException {
+        final List<String> logRecords = new ArrayList<>();
+        HttpURLConnection connection = (HttpURLConnection) new URL(url).openConnection();
+
+        if (connection.getResponseCode() == HttpURLConnection.HTTP_OK) {
+            BufferedReader in = new BufferedReader(new InputStreamReader(connection.getInputStream()));
+            String inputLine;
+            while ((inputLine = in.readLine()) != null) {
+                logRecords.add(inputLine);
             }
+            in.close();
         }
+
+        connection.disconnect();
         return logRecords;
     }
 
-    private List<LogRecord> readLocalFiles(String path) throws IOException {
-        final List<LogRecord> logRecords = new ArrayList<>();
+    private List<String> readLocalFiles(String path) throws IOException {
+        // todo: *, **
+        final List<String> logRecords = new ArrayList<>();
         Path directory = Paths.get(path);
         if (Files.isDirectory(directory)) {
             Files.walk(directory)
@@ -50,23 +55,17 @@ public class LogReader {
                     try (BufferedReader reader = Files.newBufferedReader(file)) {
                         String line;
                         while ((line = reader.readLine()) != null) {
-                            LogRecord record = parser.parseLine(line);
-                            if (record != null) {
-                                logRecords.add(record);
-                            }
+                            logRecords.add(line);
                         }
                     } catch (IOException e) {
-                        System.err.println("Ошибка при чтении файла: " + file.toString() + " - " + e.getMessage());
+                        System.err.println("Ошибка при чтении файла: " + file + " - " + e.getMessage());
                     }
                 });
         } else {
             try (BufferedReader reader = Files.newBufferedReader(directory)) {
                 String line;
                 while ((line = reader.readLine()) != null) {
-                    LogRecord record = parser.parseLine(line);
-                    if (record != null) {
-                        logRecords.add(record);
-                    }
+                    logRecords.add(line);
                 }
             }
         }
