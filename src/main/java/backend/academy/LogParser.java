@@ -8,6 +8,7 @@ import java.util.regex.Pattern;
 
 public class LogParser {
 
+    @SuppressWarnings("MagicNumber")
     public LogRecord parseLine(String logLine) {
 
         Pattern pattern = Pattern.compile(
