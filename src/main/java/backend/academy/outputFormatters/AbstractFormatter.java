@@ -14,7 +14,7 @@ public abstract class AbstractFormatter implements OutputDataFormatter {
     protected final static String COUNT = "Количество";
     protected final PrintStream printStream = new PrintStream(System.out, false, StandardCharsets.UTF_8);
 
-    private static Map<String, String> getResponseCodes(String fileName) {
+    private static Map<String, String> getCodeDescriptions(String fileName) {
         Map<String, String> codes = new HashMap<>();
         try (BufferedReader reader = new BufferedReader(new FileReader(fileName, StandardCharsets.UTF_8))) {
             String line;
@@ -30,7 +30,7 @@ public abstract class AbstractFormatter implements OutputDataFormatter {
 
     protected static Map<String, Pair<String, String>> getCodeCountsWithDescriptions(
         String fileName, Map<String, String> responseCodes) {
-        Map<String, String> codeDescriptions = getResponseCodes(fileName);
+        Map<String, String> codeDescriptions = getCodeDescriptions(fileName);
         Map<String, Pair<String, String>> codes = new HashMap<>();
         for (String code : responseCodes.keySet()) {
             codes.put(code, new Pair<>(codeDescriptions.get(code), responseCodes.get(code)));
