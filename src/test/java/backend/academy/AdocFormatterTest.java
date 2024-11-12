@@ -1,4 +1,4 @@
-package backend.academy.samples;
+package backend.academy;
 
 import backend.academy.outputFormatters.AdocFormatter;
 import org.junit.jupiter.api.AfterEach;

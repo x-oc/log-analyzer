@@ -20,6 +20,8 @@ public class Main {
         LocalDateTime from = null;
         LocalDateTime to = null;
         String format = null;
+        String filterField = null;
+        String filterValue = null;
 
         DateTimeFormatter dateTimeFormatter =
             DateTimeFormatter.ofPattern("dd/MMM/yyyy:HH:mm:ss", Locale.ENGLISH);
@@ -32,6 +34,8 @@ public class Main {
                 case "--from" -> from =  LocalDateTime.parse(args[++i], dateTimeFormatter);
                 case "--to" -> to = LocalDateTime.parse(args[++i], dateTimeFormatter);
                 case "--format" -> format = args[++i];
+                case "--filter-field" -> filterField = args[++i];
+                case "--filter-value" -> filterValue = args[++i];
                 default -> { }
             }
         }
@@ -41,9 +45,9 @@ public class Main {
         }
 
         LogAnalyzer logAnalyzer = new LogAnalyzer();
-        LogReport analysis;
+        LogReport report;
         try {
-            analysis = logAnalyzer.analyzeLogFiles(path, from, to);
+            report = logAnalyzer.analyzeLogFiles(path, from, to, filterField, filterValue);
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
@@ -59,9 +63,13 @@ public class Main {
             }
         }
 
-        formatter.printMetrics(analysis.metrics());
-        formatter.printResources(analysis.resources());
-        formatter.printResponseCodes(analysis.responseCodes());
+        formatter.printMetrics(report.metrics());
+        formatter.printResources(report.resources());
+        formatter.printResponseCodes(report.responseCodes());
+        formatter.printCustomStatistics(report.remoteUsers(), "Пользователи",
+            "Пользователь");
+        formatter.printCustomStatistics(report.httpReferrers(), "Рефереры",
+            "Реферер");
 
     }
 }

@@ -38,4 +38,42 @@ public abstract class AbstractFormatter implements OutputDataFormatter {
         }
         return codes;
     }
+
+    public void printCustomStatistics(Map<String, String> statistics, String tableName, String leftColName) {
+        printCustomStatistics(statistics, tableName, leftColName, COUNT);
+    }
+
+    public void printMetrics(Map<String, String> metrics) {
+        printHeader("Общая информация");
+        printTableWithTwoColumns(metrics, "Метрика", "Значение");
+    }
+
+    public void printResources(Map<String, String> resources) {
+        printHeader("Запрашиваемые ресурсы");
+        printTableWithTwoColumns(resources, "Ресурс", COUNT);
+    }
+
+    public void printResponseCodes(Map<String, String> responseCodes) {
+        printHeader("Коды ответа");
+        Map<String, Pair<String, String>> codes = getCodeCountsWithDescriptions("responseCodes.txt", responseCodes);
+        printTableWithThreeColumns(codes, "Код", "Имя", COUNT);
+    }
+
+    public void printCustomStatistics(
+        Map<String, String> statistics,
+        String tableName,
+        String leftColName,
+        String rightColName
+    ) {
+        printHeader(tableName);
+        printTableWithTwoColumns(statistics, leftColName, rightColName);
+    }
+
+    abstract protected void printHeader(String tableName);
+
+    abstract protected void printTableWithTwoColumns(Map<String, String> table,
+                                                     String leftColName, String rightColName);
+
+    abstract protected void printTableWithThreeColumns(Map<String, Pair<String, String>> table,
+                                                       String leftColName, String centerColName, String rightColName);
 }

@@ -6,30 +6,12 @@ import org.apache.commons.math3.util.Pair;
 
 public class MarkdownFormatter extends AbstractFormatter {
 
-    @Override
-    public void printMetrics(Map<String, String> metrics) {
-        printStream.println("#### Общая информация\n");
-        printTableWithTwoColumns(metrics, "Метрика", "Значение");
-        printStream.println();
-    }
-
-    @Override
-    public void printResources(Map<String, String> resources) {
-        printStream.println("#### Запрашиваемые ресурсы\n");
-        printTableWithTwoColumns(resources, "Ресурс", COUNT);
-        printStream.println();
-    }
-
-    @Override
-    public void printResponseCodes(Map<String, String> responseCodes) {
-        printStream.println("#### Коды ответа\n");
-        Map<String, Pair<String, String>> codes = getCodeCountsWithDescriptions("responseCodes.txt", responseCodes);
-        printTableWithThreeColumns(codes, "Код", "Имя", COUNT);
-        printStream.println();
+    protected void printHeader(String header) {
+        printStream.println("#### " + header + "\n");
     }
 
     @SuppressWarnings("MultipleStringLiterals")
-    private void printTableWithTwoColumns(Map<String, String> table, String leftColName, String rightColName) {
+    protected void printTableWithTwoColumns(Map<String, String> table, String leftColName, String rightColName) {
         int namesMaxLength = Math.max(table.keySet().stream()
             .mapToInt(String::length)
             .max().orElse(0), leftColName.length());
@@ -46,10 +28,11 @@ public class MarkdownFormatter extends AbstractFormatter {
             printStream.printf("|%s|%" + (valuesMaxLength + 1) + "s |%n",
                 StringUtils.center(key, namesMaxLength + 2), value);
         });
+        printStream.println();
     }
 
     @SuppressWarnings("MultipleStringLiterals")
-    private void printTableWithThreeColumns(Map<String, Pair<String, String>> table,
+    protected void printTableWithThreeColumns(Map<String, Pair<String, String>> table,
                                             String leftColName, String centerColName, String rightColName) {
 
         int namesMaxLength = Math.max(table.keySet().stream()
@@ -75,5 +58,6 @@ public class MarkdownFormatter extends AbstractFormatter {
                 StringUtils.center(value.getFirst(), leftValuesMaxLength + 2),
                 value.getSecond());
         });
+        printStream.println();
     }
 }

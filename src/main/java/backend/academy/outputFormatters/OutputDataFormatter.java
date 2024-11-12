@@ -9,4 +9,11 @@ public interface OutputDataFormatter {
     void printResources(Map<String, String> resources);
 
     void printResponseCodes(Map<String, String> responseCodes);
+
+    void printCustomStatistics(Map<String, String> statistics,
+        String tableName, String leftColName, String rightColName);
+
+    void printCustomStatistics(Map<String, String> statistics,
+        String tableName, String leftColName);
+
 }

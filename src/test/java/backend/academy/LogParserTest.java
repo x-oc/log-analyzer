@@ -1,5 +1,5 @@
-import backend.academy.LogParser;
-import backend.academy.LogRecord;
+package backend.academy;
+
 import org.junit.jupiter.api.Test;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
