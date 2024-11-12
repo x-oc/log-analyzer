@@ -31,9 +31,9 @@ public abstract class AbstractFormatter implements OutputDataFormatter {
     protected static Map<String, Pair<String, String>> getCodeCountsWithDescriptions(
         String fileName, Map<String, String> responseCodes) {
         Map<String, String> codeDescriptions = getCodeDescriptions(fileName);
-        Map<String, Pair<String, String>> codes = new HashMap<>();
-        for (String code : responseCodes.keySet()) {
-            codes.put(code, new Pair<>(codeDescriptions.get(code), responseCodes.get(code)));
+        Map<String, Pair<String, String>> codes = new HashMap<>(responseCodes.size() * 2);
+        for (Map.Entry<String, String> code : responseCodes.entrySet()) {
+            codes.put(code.getKey(), new Pair<>(codeDescriptions.get(code.getKey()), code.getValue()));
         }
         return codes;
     }

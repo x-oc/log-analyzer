@@ -3,24 +3,23 @@ package backend.academy;
 import backend.academy.outputFormatters.AdocFormatter;
 import backend.academy.outputFormatters.MarkdownFormatter;
 import backend.academy.outputFormatters.OutputDataFormatter;
-import lombok.experimental.UtilityClass;
+import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import java.io.IOException;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.Locale;
-//import java.util.HashMap;
-//import java.util.Map;
+import lombok.experimental.UtilityClass;
 
 @UtilityClass
 public class Main {
 
     @SuppressWarnings("ModifiedControlVariable")
+    @SuppressFBWarnings("LSC_LITERAL_STRING_COMPARISON")
     public static void main(String[] args) {
         String path = null;
         LocalDateTime from = null;
         LocalDateTime to = null;
         String format = null;
-
 
         DateTimeFormatter dateTimeFormatter =
             DateTimeFormatter.ofPattern("dd/MMM/yyyy:HH:mm:ss", Locale.ENGLISH);
@@ -38,8 +37,7 @@ public class Main {
         }
 
         if (path == null) {
-            System.err.println("Не указан путь к лог-файлу.");
-            return;
+            throw new RuntimeException("Не указан путь к лог-файлу.");
         }
 
         LogAnalyzer logAnalyzer = new LogAnalyzer();
@@ -47,8 +45,7 @@ public class Main {
         try {
             analysis = logAnalyzer.analyzeLogFiles(path, from, to);
         } catch (IOException e) {
-            System.err.println("Неверный путь к лог-файлу.");
-            return;
+            throw new RuntimeException(e);
         }
 
         OutputDataFormatter formatter = new MarkdownFormatter();
