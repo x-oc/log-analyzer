@@ -41,7 +41,7 @@ public class Main {
         }
 
         LogAnalyzer logAnalyzer = new LogAnalyzer();
-        Analysis analysis;
+        LogReport analysis;
         try {
             analysis = logAnalyzer.analyzeLogFiles(path, from, to);
         } catch (IOException e) {

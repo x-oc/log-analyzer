@@ -1,24 +1,15 @@
 package backend.academy;
 
 import com.google.common.math.Quantiles;
-import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
-import java.io.File;
 import java.io.IOException;
-import java.net.MalformedURLException;
-import java.net.URL;
-import java.nio.file.FileSystem;
-import java.nio.file.FileSystems;
-import java.nio.file.Files;
-import java.nio.file.PathMatcher;
-import java.nio.file.Paths;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicLong;
-import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import static java.util.Map.Entry;
@@ -27,12 +18,14 @@ public class LogAnalyzer {
 
     private final LogParser parser;
     private final static int P95 = 95;
+    private final static int RESOURCES_COUNT = 5;
+    private final static int CODES_COUNT = 5;
 
     public LogAnalyzer() {
         parser = new LogParser();
     }
 
-    public Analysis analyzeLogFiles(String path, LocalDateTime from, LocalDateTime to) throws IOException {
+    public LogReport analyzeLogFiles(String path, LocalDateTime from, LocalDateTime to) throws IOException {
 
         try (LogReader reader = new LogReader(path)) {
             Stream<String> lines = reader.read();
@@ -60,59 +53,38 @@ public class LogAnalyzer {
                         responseCodes.getOrDefault(String.valueOf(logRecord.status()), 0L) + 1);
                 });
 
-            long response95p = (long) Quantiles.percentiles().index(P95).compute(responseSizes);
+            long response95p;
+            try {
+                response95p = (long) Quantiles.percentiles().index(P95).compute(responseSizes);
+            } catch (Exception e) {
+                response95p = 0;
+            }
             Map<String, String> metrics = new LinkedHashMap<>();
-            metrics.put("Файл(-ы)", getFileName(path));
+            metrics.put("Файл(-ы)", reader.getFileName(path));
             metrics.put("Начальная дата", from == null ? "-" : from.toString());
             metrics.put("Конечная дата", to == null ? "-" : to.toString());
             metrics.put("Количество запросов", totalRequests.toString());
-            metrics.put("Средний размер ответа", totalResponseSize.get() / totalRequests.get() + "b");
+            metrics.put("Средний размер ответа", totalResponseSize.get() / Math.max(totalRequests.get(), 1) + "b");
             metrics.put("95p размера ответа", response95p + "b");
 
-            return new Analysis(metrics, mapLongToString(resources), mapLongToString(responseCodes));
+            Map<String, String> resultResources = mapLongToString(mapTopN(resources, RESOURCES_COUNT));
+            Map<String, String> resultCodes = mapLongToString(mapTopN(responseCodes, CODES_COUNT));
+
+            return new LogReport(metrics, resultResources, resultCodes);
         }
     }
 
-    @SuppressFBWarnings("PATH_TRAVERSAL_IN")
-    private String getFileName(String path) {
-        File file = new File(path);
-        StringBuilder name = new StringBuilder();
-        String fileNameNotFound = "Не удалось определить название файла";
+    private Map<String, Long> mapTopN(Map<String, Long> map, int n) {
+        List<Entry<String, Long>> list = new ArrayList<>(map.entrySet());
+        list.sort(Entry.comparingByValue());
+        Collections.reverse(list);
 
-        if (path.startsWith("http") || path.startsWith("https")) {
-            try {
-                URL url = new URL(path);
-                name.append(url.getPath().substring(url.getPath().lastIndexOf('/') + 1));
-            } catch (MalformedURLException e) {
-                name.append(fileNameNotFound);
-            }
-        } else if (path.contains("*") || Files.isDirectory(Paths.get(path))) {
-            FileSystem fileSystem = FileSystems.getDefault();
-            PathMatcher matcher = fileSystem.getPathMatcher("glob:" + path);
-            List<String> files;
-            try {
-                files = Files.walk(Paths.get(path.split("/")[0]))
-                    .filter(Files::isRegularFile)
-                    .filter(matcher::matches)
-                    .map(source -> {
-                        String[] parts = source.toString().split(Pattern.quote("\\"));
-                        return parts[parts.length - 1];
-                    })
-                    .toList();
-            } catch (IOException e) {
-                throw new RuntimeException(e);
-            }
-            for (String f : files) {
-                if (f != null && !f.isEmpty()) {
-                    name.append(f).append(' ');
-                }
-            }
-        } else if (file.isFile()) {
-            name.append(file.getName());
-        } else {
-            name.append(fileNameNotFound);
+        Map<String, Long> result = new LinkedHashMap<>(n);
+        for (Entry<String, Long> entry : list.subList(0, Math.min(n, list.size()))) {
+            result.put(entry.getKey(), entry.getValue());
         }
-        return name.toString();
+
+        return result;
     }
 
     private Map<String, String> mapLongToString(Map<String, Long> map) {
