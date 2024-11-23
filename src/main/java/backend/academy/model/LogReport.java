@@ -1,7 +1,9 @@
 package backend.academy.model;
 
 import java.util.Map;
+import lombok.Builder;
 
+@Builder
 public record LogReport(Metrics metrics,
                         Map<String, String> resources,
                         Map<String, String> responseCodes,

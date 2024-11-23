@@ -1,5 +1,6 @@
 package backend.academy.outputFormatters;
 
+import backend.academy.model.Metrics;
 import java.io.BufferedReader;
 import java.io.FileReader;
 import java.io.IOException;
@@ -8,7 +9,6 @@ import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.Map;
-import backend.academy.model.Metrics;
 import org.apache.commons.math3.util.Pair;
 
 public abstract class AbstractFormatter implements OutputDataFormatter {

@@ -6,6 +6,9 @@ import backend.academy.model.LogRecord;
 import backend.academy.model.LogReport;
 import backend.academy.model.Metrics;
 import backend.academy.model.TotalLogStats;
+import backend.academy.readers.LocalLogReader;
+import backend.academy.readers.LogReader;
+import backend.academy.readers.RemoteLogReader;
 import com.google.common.math.Quantiles;
 import java.io.IOException;
 import java.time.LocalDateTime;
@@ -38,7 +41,7 @@ public class LogAnalyzer {
     public LogReport analyzeLogFiles(String path, LocalDateTime from, LocalDateTime to,
         String filterField, String filterValue) throws IOException {
 
-        try (LogReader reader = new LogReader(path)) {
+        try (LogReader reader = LogReader.isUrl(path) ? new RemoteLogReader(path) : new LocalLogReader(path)) {
             Stream<String> lines = reader.read();
 
             TotalLogStats stats = new TotalLogStats();
@@ -82,13 +85,19 @@ public class LogAnalyzer {
     private LogReport getReport(LogReader reader, String path,
         TotalLogStats stats, LocalDateTime from, LocalDateTime to) {
 
-        Metrics metrics = getMetrics(reader, path, stats, from, to);
-        Map<String, String> resultResources = mapLongToString(mapTopN(stats.resources(), RESOURCES_COUNT));
-        Map<String, String> resultCodes = mapLongToString(mapTopN(stats.responseCodes(), CODES_COUNT));
-        Map<String, String> resultRemoteUsers = mapLongToString(mapTopN(stats.remoteUsers(), REMOTE_USERS_COUNT));
-        Map<String, String> resultHttpReferrers = mapLongToString(mapTopN(stats.httpReferrers(), HTTP_REFERRERS_COUNT));
+        LogReport.LogReportBuilder logReportBuilder = LogReport.builder();
 
-        return new LogReport(metrics, resultResources, resultCodes, resultRemoteUsers, resultHttpReferrers);
+        logReportBuilder.metrics(getMetrics(reader, path, stats, from, to));
+        logReportBuilder.resources(
+            mapLongToString(getFirstNLargestValues(stats.resources(), RESOURCES_COUNT)));
+        logReportBuilder.responseCodes(
+            mapLongToString(getFirstNLargestValues(stats.responseCodes(), CODES_COUNT)));
+        logReportBuilder.remoteUsers(
+            mapLongToString(getFirstNLargestValues(stats.remoteUsers(), REMOTE_USERS_COUNT)));
+        logReportBuilder.httpReferrers(
+            mapLongToString(getFirstNLargestValues(stats.httpReferrers(), HTTP_REFERRERS_COUNT)));
+
+        return logReportBuilder.build();
     }
 
     private Metrics getMetrics(LogReader reader, String path,
@@ -114,7 +123,7 @@ public class LogAnalyzer {
         return metrics;
     }
 
-    private Map<String, Long> mapTopN(Map<String, Long> map, int n) {
+    private Map<String, Long> getFirstNLargestValues(Map<String, Long> map, int n) {
         List<Entry<String, Long>> list = new ArrayList<>(map.entrySet());
         list.sort(Entry.comparingByValue());
         Collections.reverse(list);

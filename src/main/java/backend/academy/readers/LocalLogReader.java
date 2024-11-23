@@ -1,60 +1,34 @@
-package backend.academy;
+package backend.academy.readers;
 
 import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
-import java.io.BufferedReader;
-import java.io.Closeable;
 import java.io.File;
 import java.io.IOException;
-import java.io.InputStreamReader;
-import java.net.URI;
-import java.net.URISyntaxException;
-import java.net.URL;
-import java.net.URLConnection;
-import java.nio.charset.StandardCharsets;
 import java.nio.file.FileSystem;
 import java.nio.file.FileSystems;
 import java.nio.file.Files;
 import java.nio.file.PathMatcher;
 import java.nio.file.Paths;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.regex.Pattern;
-import java.util.stream.Stream;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class LogReader implements Closeable {
+public class LocalLogReader extends LogReader {
 
-    private final static Logger LOGGER = LoggerFactory.getLogger(LogReader.class);
+    private final static Logger LOGGER = LoggerFactory.getLogger(LocalLogReader.class);
     private final static String GLOB_STR = "glob:";
-    private final ArrayList<BufferedReader> readers;
 
-    @SuppressFBWarnings({"PATH_TRAVERSAL_IN", "URLCONNECTION_SSRF_FD"})
-    public LogReader(String source) {
-
-        this.readers = new ArrayList<>();
-
+    @SuppressFBWarnings("PATH_TRAVERSAL_IN")
+    public LocalLogReader(String source) {
         try {
-            if (isUrl(source)) {
-                URI uri = new URI(source);
-                URL url = uri.toURL();
-                URLConnection connection = url.openConnection();
-                readers.add(new BufferedReader(new InputStreamReader(connection.getInputStream(),
-                                                                        StandardCharsets.UTF_8)));
+            if (source.contains("*") || Files.isDirectory(Paths.get(source))) {
+                setReadersForLocalFiles(source);
             } else {
-                if (source.contains("*") || Files.isDirectory(Paths.get(source))) {
-                    setReadersForLocalFiles(source);
-                } else {
-                    readers.add(Files.newBufferedReader(Paths.get(source)));
-                }
+                readers.add(Files.newBufferedReader(Paths.get(source)));
             }
-        } catch (IOException | URISyntaxException e) {
+        } catch (IOException e) {
             LOGGER.error("Ошибка при чтении файла: {}", source);
         }
-    }
-
-    public Stream<String> read() {
-        return readers.stream().flatMap(BufferedReader::lines);
     }
 
     @SuppressFBWarnings("PATH_TRAVERSAL_IN")
@@ -81,10 +55,7 @@ public class LogReader implements Closeable {
         StringBuilder name = new StringBuilder();
         String fileNameNotFound = "Не удалось определить название файла";
 
-        if (isUrl(path)) {
-            String[] parts = path.split("/");
-            name.append(parts[parts.length - 1]);
-        } else if (path.contains("*") || Files.isDirectory(Paths.get(path))) {
+        if (path.contains("*") || Files.isDirectory(Paths.get(path))) {
             FileSystem fileSystem = FileSystems.getDefault();
             PathMatcher matcher = fileSystem.getPathMatcher(GLOB_STR + path);
             List<String> files;
@@ -113,16 +84,4 @@ public class LogReader implements Closeable {
         return name.toString();
     }
 
-    private boolean isUrl(String path) {
-        return path.startsWith("http://") || path.startsWith("https://");
-    }
-
-    @Override
-    public void close() throws IOException {
-        for (BufferedReader reader : readers) {
-            if (reader != null) {
-                reader.close();
-            }
-        }
-    }
 }

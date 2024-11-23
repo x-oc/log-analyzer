@@ -2,6 +2,8 @@ package backend.academy.logFieldFilters;
 
 public class FieldFilterFactory {
 
+    private FieldFilterFactory() { }
+
     public static LogFieldFilter resolveFilter(String name) {
         return switch (name) {
             case "addr" -> new AddressFilter();
@@ -12,8 +14,7 @@ public class FieldFilterFactory {
             case "bytes" -> new BytesFilter();
             case "referrer" -> new ReferrerFilter();
             case "agent" -> new AgentFilter();
-            default -> (_, _) -> true;
+            default -> (logRecord, value) -> true;
         };
     }
-
 }

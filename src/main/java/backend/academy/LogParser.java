@@ -9,35 +9,38 @@ import java.util.regex.Pattern;
 
 public class LogParser {
 
+    private static final Pattern PATTERN = Pattern.compile(
+        "^(\\S+) - (\\S+) \\[(.*?)] \"(.*?)\" (\\d+) (\\d+) \"(.*?)\" \"(.*?)\"$");
+
     @SuppressWarnings("MagicNumber")
     public LogRecord parseLine(String logLine) {
 
-        Pattern pattern = Pattern.compile(
-                "^(\\S+) - (\\S+) \\[(.*?)] \"(.*?)\" (\\d+) (\\d+) \"(.*?)\" \"(.*?)\"$");
-        Matcher matcher = pattern.matcher(logLine);
+        Matcher matcher = PATTERN.matcher(logLine);
 
         if (!matcher.find()) {
             return null;
         }
 
-        String remoteAddr = matcher.group(1);
-        String remoteUser = matcher.group(2);
-        String timeLocalString = matcher.group(3);
+        LogRecord.LogRecordBuilder logRecordBuilder = LogRecord.builder();
 
-        String[] request = matcher.group(4).split(" ");
-        if (request.length != 3) return null;
-        LogRecord.LogRequestData requestData = new LogRecord.LogRequestData(request[0], request[1], request[2]);
-
-        int status = Integer.parseInt(matcher.group(5));
-        long bodyBytesSent = Long.parseLong(matcher.group(6));
-        String httpReferer = matcher.group(7);
-        String httpUserAgent = matcher.group(8);
+        logRecordBuilder.remoteAddr(matcher.group(1));
+        logRecordBuilder.remoteUser(matcher.group(2));
 
         DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd/MMM/yyyy:HH:mm:ss Z", Locale.ENGLISH);
-        LocalDateTime timeLocal = LocalDateTime.parse(timeLocalString, formatter);
+        logRecordBuilder.timeLocal(LocalDateTime.parse(matcher.group(3), formatter));
 
-        return new LogRecord(remoteAddr, remoteUser, timeLocal, requestData,
-                             status, bodyBytesSent, httpReferer, httpUserAgent);
+        String[] request = matcher.group(4).split(" ");
+        if (request.length != 3) {
+            return null;
+        }
+        LogRecord.LogRequestData requestData = new LogRecord.LogRequestData(request[0], request[1], request[2]);
+        logRecordBuilder.request(requestData);
 
+        logRecordBuilder.status(Integer.parseInt(matcher.group(5)));
+        logRecordBuilder.bodyBytesSent(Long.parseLong(matcher.group(6)));
+        logRecordBuilder.httpReferer(matcher.group(7));
+        logRecordBuilder.httpUserAgent(matcher.group(8));
+
+        return logRecordBuilder.build();
     }
 }

@@ -1,9 +1,9 @@
 package backend.academy.model;
 
-import lombok.Getter;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.stream.Collectors;
+import lombok.Getter;
 
 public class Metrics {
 
