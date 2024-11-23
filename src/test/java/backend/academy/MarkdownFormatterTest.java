@@ -1,5 +1,6 @@
 package backend.academy;
 
+import backend.academy.model.Metrics;
 import backend.academy.outputFormatters.MarkdownFormatter;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -26,17 +27,17 @@ public class MarkdownFormatterTest {
 
     @Test
     public void printMetricsTest() {
-        Map<String, String> metrics = new HashMap<>();
-        metrics.put("test", "test");
-        metrics.put("test2", "52");
+        Metrics metrics = new Metrics();
+        metrics.setMetric(Metrics.Metric.FILES, "test");
+        metrics.setMetric(Metrics.Metric.REQUEST_COUNT, "52");
         markdownFormatter.printMetrics(metrics);
         String correctOutput = """
             #### Общая информация
 
-            | Метрика | Значение |
-            |:-------:|---------:|
-            |  test2  |       52 |
-            |  test   |     test |""";
+            |       Метрика       | Значение |
+            |:-------------------:|---------:|
+            |      Файл(-ы)       |     test |
+            | Количество запросов |       52 |""";
         assertThat(outContent.toString().strip().replace("\r", "")).isEqualTo(correctOutput);
     }
 

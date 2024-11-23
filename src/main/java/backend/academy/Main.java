@@ -1,5 +1,6 @@
 package backend.academy;
 
+import backend.academy.model.LogReport;
 import backend.academy.outputFormatters.AdocFormatter;
 import backend.academy.outputFormatters.MarkdownFormatter;
 import backend.academy.outputFormatters.OutputDataFormatter;
@@ -44,7 +45,7 @@ public class Main {
             throw new RuntimeException("Не указан путь к лог-файлу.");
         }
 
-        LogAnalyzer logAnalyzer = new LogAnalyzer();
+        LogAnalyzer logAnalyzer = new LogAnalyzer(new LogParser());
         LogReport report;
         try {
             report = logAnalyzer.analyzeLogFiles(path, from, to, filterField, filterValue);

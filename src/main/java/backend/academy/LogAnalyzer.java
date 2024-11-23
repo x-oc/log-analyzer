@@ -1,32 +1,34 @@
 package backend.academy;
 
+import backend.academy.model.LogRecord;
+import backend.academy.model.LogReport;
+import backend.academy.model.Metrics;
+import backend.academy.model.TotalLogStats;
 import com.google.common.math.Quantiles;
 import java.io.IOException;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
-import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import static java.util.Map.Entry;
 
 public class LogAnalyzer {
 
-    private final LogParser parser;
-    private final static int P95 = 95;
+    private final static int THE_95TH_PERCENTILE = 95;
     private final static int RESOURCES_COUNT = 5;
     private final static int CODES_COUNT = 5;
     private final static int REMOTE_USERS_COUNT = 5;
     private final static int HTTP_REFERRERS_COUNT = 5;
+    private final LogParser parser;
 
-    public LogAnalyzer() {
-        parser = new LogParser();
+    public LogAnalyzer(LogParser parser) {
+        this.parser = parser;
     }
 
     public LogReport analyzeLogFiles(String path, LocalDateTime from, LocalDateTime to) throws IOException {
@@ -39,64 +41,25 @@ public class LogAnalyzer {
         try (LogReader reader = new LogReader(path)) {
             Stream<String> lines = reader.read();
 
-            Map<String, Long> resources = new HashMap<>();
-            Map<String, Long> responseCodes = new HashMap<>();
-            Map<String, Long> remoteUsers = new HashMap<>();
-            Map<String, Long> httpReferrers = new HashMap<>();
-            List<Long> responseSizes = new ArrayList<>();
-            AtomicLong totalRequests = new AtomicLong();
-            AtomicLong totalResponseSize = new AtomicLong();
+            TotalLogStats stats = new TotalLogStats();
 
             lines
                 .map(parser::parseLine)
-                .filter(logRecord -> {
-                    boolean isNotBefore = from == null || logRecord.timeLocal().isAfter(from.minusSeconds(1));
-                    boolean isNotAfter = to == null || logRecord.timeLocal().isBefore(to.plusSeconds(1));
-                    boolean filter = getFiltered(filterField, filterValue, logRecord);
-                    return isNotBefore && isNotAfter && filter;
-                })
-                .forEach(logRecord -> {
-                    totalRequests.getAndIncrement();
-                    totalResponseSize.addAndGet(logRecord.bodyBytesSent());
-                    responseSizes.add(logRecord.bodyBytesSent());
-                    resources.put(logRecord.request().split(" ")[1],
-                        resources.getOrDefault(logRecord.request().split(" ")[1], 0L) + 1);
-                    responseCodes.put(String.valueOf(logRecord.status()),
-                        responseCodes.getOrDefault(String.valueOf(logRecord.status()), 0L) + 1);
-                    remoteUsers.put(logRecord.remoteUser(),
-                        remoteUsers.getOrDefault(logRecord.remoteUser(), 0L) + 1);
-                    httpReferrers.put(logRecord.httpReferer(),
-                        httpReferrers.getOrDefault(logRecord.httpReferer(), 0L) + 1);
-                });
+                .filter(logRecord -> getFiltered(filterField, filterValue, logRecord, from, to))
+                .forEach(logRecord -> updateStats(stats, logRecord));
 
-            long response95p;
-            try {
-                response95p = (long) Quantiles.percentiles().index(P95).compute(responseSizes);
-            } catch (Exception e) {
-                response95p = 0;
-            }
-            Map<String, String> metrics = new LinkedHashMap<>();
-            metrics.put("Файл(-ы)", reader.getFileName(path));
-            metrics.put("Начальная дата", from == null ? "-" : from.toString());
-            metrics.put("Конечная дата", to == null ? "-" : to.toString());
-            metrics.put("Количество запросов", totalRequests.toString());
-            metrics.put("Средний размер ответа", totalResponseSize.get() / Math.max(totalRequests.get(), 1) + "b");
-            metrics.put("95p размера ответа", response95p + "b");
-
-            Map<String, String> resultResources = mapLongToString(mapTopN(resources, RESOURCES_COUNT));
-            Map<String, String> resultCodes = mapLongToString(mapTopN(responseCodes, CODES_COUNT));
-            Map<String, String> resultRemoteUsers = mapLongToString(mapTopN(remoteUsers, REMOTE_USERS_COUNT));
-            Map<String, String> resultHttpReferrers = mapLongToString(mapTopN(httpReferrers, HTTP_REFERRERS_COUNT));
-
-            return new LogReport(metrics, resultResources, resultCodes, resultRemoteUsers, resultHttpReferrers);
+            return getReport(reader, path, stats, from, to);
         }
     }
 
-    private boolean getFiltered(String filterField, String filterValue, LogRecord logRecord) {
+    private boolean getFiltered(String filterField, String filterValue, LogRecord logRecord,
+        LocalDateTime from, LocalDateTime to) {
         if (filterField == null || filterValue == null
             || filterValue.trim().isEmpty() || filterField.trim().isEmpty()) {
             return true;
         }
+        boolean isNotBefore = from == null || logRecord.timeLocal().isAfter(from);
+        boolean isNotAfter = to == null || logRecord.timeLocal().isBefore(to);
         boolean result;
         switch (filterField) {
             case "addr":
@@ -111,7 +74,8 @@ public class LogAnalyzer {
                 result = logRecord.timeLocal().equals(timeLocal);
                 break;
             case "request":
-                result = logRecord.request().contains(filterValue);
+                result = logRecord.request().method().contains(filterValue) ||
+                         logRecord.request().resource().contains(filterValue);
                 break;
             case "status":
                 result = String.valueOf(logRecord.status()).equals(filterValue);
@@ -127,7 +91,56 @@ public class LogAnalyzer {
                 break;
             default: result = true;
         }
-        return result;
+        return result && isNotBefore && isNotAfter;
+    }
+
+    private void updateStats(TotalLogStats stats, LogRecord logRecord) {
+        stats.totalRequests().getAndIncrement();
+        stats.totalResponseSize().addAndGet(logRecord.bodyBytesSent());
+        stats.responseSizes().add(logRecord.bodyBytesSent());
+        stats.resources().put(logRecord.request().resource(),
+            stats.resources().getOrDefault(logRecord.request().resource(), 0L) + 1);
+        stats.responseCodes().put(String.valueOf(logRecord.status()),
+            stats.responseCodes().getOrDefault(String.valueOf(logRecord.status()), 0L) + 1);
+        stats.remoteUsers().put(logRecord.remoteUser(),
+            stats.remoteUsers().getOrDefault(logRecord.remoteUser(), 0L) + 1);
+        stats.httpReferrers().put(logRecord.httpReferer(),
+            stats.httpReferrers().getOrDefault(logRecord.httpReferer(), 0L) + 1);
+    }
+
+    private LogReport getReport(LogReader reader, String path,
+        TotalLogStats stats, LocalDateTime from, LocalDateTime to) {
+
+        Metrics metrics = getMetrics(reader, path, stats, from, to);
+        Map<String, String> resultResources = mapLongToString(mapTopN(stats.resources(), RESOURCES_COUNT));
+        Map<String, String> resultCodes = mapLongToString(mapTopN(stats.responseCodes(), CODES_COUNT));
+        Map<String, String> resultRemoteUsers = mapLongToString(mapTopN(stats.remoteUsers(), REMOTE_USERS_COUNT));
+        Map<String, String> resultHttpReferrers = mapLongToString(mapTopN(stats.httpReferrers(), HTTP_REFERRERS_COUNT));
+
+        return new LogReport(metrics, resultResources, resultCodes, resultRemoteUsers, resultHttpReferrers);
+    }
+
+    private Metrics getMetrics(LogReader reader, String path,
+        TotalLogStats stats, LocalDateTime from, LocalDateTime to) {
+
+        Metrics metrics = new Metrics();
+
+        long response95p;
+        try {
+            response95p = (long) Quantiles.percentiles().index(THE_95TH_PERCENTILE).compute(stats.responseSizes());
+        } catch (Exception e) {
+            response95p = 0;
+        }
+
+        metrics.setMetric(Metrics.Metric.FILES, reader.getFileName(path));
+        metrics.setMetric(Metrics.Metric.START_DATE, from == null ? "-" : from.toString());
+        metrics.setMetric(Metrics.Metric.END_DATE, to == null ? "-" : to.toString());
+        metrics.setMetric(Metrics.Metric.REQUEST_COUNT, stats.totalRequests().toString());
+        metrics.setMetric(Metrics.Metric.AVERAGE_RESPONSE_SIZE,
+            stats.totalResponseSize().get() / Math.max(stats.totalRequests().get(), 1) + "b");
+        metrics.setMetric(Metrics.Metric.RESPONSE_95TH_PERCENTILE, response95p + "b");
+
+        return metrics;
     }
 
     private Map<String, Long> mapTopN(Map<String, Long> map, int n) {

@@ -1,5 +1,6 @@
 package backend.academy;
 
+import backend.academy.model.LogRecord;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.Locale;
@@ -22,7 +23,11 @@ public class LogParser {
         String remoteAddr = matcher.group(1);
         String remoteUser = matcher.group(2);
         String timeLocalString = matcher.group(3);
-        String request = matcher.group(4);
+
+        String[] request = matcher.group(4).split(" ");
+        if (request.length != 3) return null;
+        LogRecord.LogRequestData requestData = new LogRecord.LogRequestData(request[0], request[1], request[2]);
+
         int status = Integer.parseInt(matcher.group(5));
         long bodyBytesSent = Long.parseLong(matcher.group(6));
         String httpReferer = matcher.group(7);
@@ -31,7 +36,7 @@ public class LogParser {
         DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd/MMM/yyyy:HH:mm:ss Z", Locale.ENGLISH);
         LocalDateTime timeLocal = LocalDateTime.parse(timeLocalString, formatter);
 
-        return new LogRecord(remoteAddr, remoteUser, timeLocal, request,
+        return new LogRecord(remoteAddr, remoteUser, timeLocal, requestData,
                              status, bodyBytesSent, httpReferer, httpUserAgent);
 
     }

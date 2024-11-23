@@ -1,10 +1,11 @@
 package backend.academy.outputFormatters;
 
+import backend.academy.model.Metrics;
 import java.util.Map;
 
 public interface OutputDataFormatter {
 
-    void printMetrics(Map<String, String> metrics);
+    void printMetrics(Metrics metrics);
 
     void printResources(Map<String, String> resources);
 

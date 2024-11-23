@@ -1,8 +1,8 @@
-package backend.academy;
+package backend.academy.model;
 
 import java.util.Map;
 
-public record LogReport(Map<String, String> metrics,
+public record LogReport(Metrics metrics,
                         Map<String, String> resources,
                         Map<String, String> responseCodes,
                         Map<String, String> remoteUsers,

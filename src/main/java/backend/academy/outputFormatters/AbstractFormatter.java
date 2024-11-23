@@ -8,6 +8,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import backend.academy.model.Metrics;
 import org.apache.commons.math3.util.Pair;
 
 public abstract class AbstractFormatter implements OutputDataFormatter {
@@ -43,9 +44,9 @@ public abstract class AbstractFormatter implements OutputDataFormatter {
         printCustomStatistics(statistics, tableName, leftColName, COUNT);
     }
 
-    public void printMetrics(Map<String, String> metrics) {
+    public void printMetrics(Metrics metrics) {
         printHeader("Общая информация");
-        printTableWithTwoColumns(metrics, "Метрика", "Значение");
+        printTableWithTwoColumns(metrics.getMetrics(), "Метрика", "Значение");
     }
 
     public void printResources(Map<String, String> resources) {

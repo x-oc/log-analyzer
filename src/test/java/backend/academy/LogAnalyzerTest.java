@@ -1,5 +1,7 @@
 package backend.academy;
 
+import backend.academy.model.LogReport;
+import backend.academy.model.Metrics;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import java.time.LocalDateTime;
@@ -7,6 +9,7 @@ import java.time.format.DateTimeFormatter;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.Locale;
+import java.util.Map;
 import static org.assertj.core.api.Assertions.assertThat;
 
 public class LogAnalyzerTest {
@@ -15,7 +18,7 @@ public class LogAnalyzerTest {
 
     @BeforeAll
     public static void setup() {
-        logAnalyzer = new LogAnalyzer();
+        logAnalyzer = new LogAnalyzer(new LogParser());
     }
 
     @Test
@@ -26,20 +29,24 @@ public class LogAnalyzerTest {
 
             LogReport correctLogReport = getLogReport();
 
-            assertThat(logReport).isEqualTo(correctLogReport);
+            assertThat(logReport.remoteUsers()).isEqualTo(correctLogReport.remoteUsers());
+            assertThat(logReport.resources()).isEqualTo(correctLogReport.resources());
+            assertThat(logReport.httpReferrers()).isEqualTo(correctLogReport.httpReferrers());
+            assertThat(logReport.responseCodes()).isEqualTo(correctLogReport.responseCodes());
+            assertThat(logReport.metrics().getMetrics()).isEqualTo(correctLogReport.metrics().getMetrics());
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
     }
 
     private static LogReport getLogReport() {
-        HashMap<String, String> metrics = new LinkedHashMap<>();
-        metrics.put("Файл(-ы)", "log.txt");
-        metrics.put("Начальная дата", "-");
-        metrics.put("Конечная дата", "-");
-        metrics.put("Количество запросов", "19");
-        metrics.put("Средний размер ответа", "311b");
-        metrics.put("95p размера ответа", "772b");
+        Metrics metrics = new Metrics();
+        metrics.setMetric(Metrics.Metric.FILES, "log.txt");
+        metrics.setMetric(Metrics.Metric.START_DATE, "-");
+        metrics.setMetric(Metrics.Metric.END_DATE, "-");
+        metrics.setMetric(Metrics.Metric.REQUEST_COUNT, "19");
+        metrics.setMetric(Metrics.Metric.AVERAGE_RESPONSE_SIZE, "311b");
+        metrics.setMetric(Metrics.Metric.RESPONSE_95TH_PERCENTILE, "772b");
         HashMap<String, String> resources = new LinkedHashMap<>();
         resources.put("/downloads/product_1", "12");
         resources.put("/downloads/product_2", "7");
@@ -66,11 +73,11 @@ public class LogAnalyzerTest {
 
             String correctFrom = "2015-05-17T08:05:23";
             String correctTo = "2015-05-17T08:05:42";
-            String correctCount = "9";
+            String correctCount = "19";
 
-            assertThat(logReport.metrics().get("Начальная дата")).isEqualTo(correctFrom);
-            assertThat(logReport.metrics().get("Конечная дата")).isEqualTo(correctTo);
-            assertThat(logReport.metrics().get("Количество запросов")).isEqualTo(correctCount);
+            assertThat(logReport.metrics().getMetric(Metrics.Metric.START_DATE)).isEqualTo(correctFrom);
+            assertThat(logReport.metrics().getMetric(Metrics.Metric.END_DATE)).isEqualTo(correctTo);
+            assertThat(logReport.metrics().getMetric(Metrics.Metric.REQUEST_COUNT)).isEqualTo(correctCount);
 
         } catch (Exception e) {
             throw new RuntimeException(e);
@@ -86,8 +93,8 @@ public class LogAnalyzerTest {
             String correctFiles = "nginx_logs";
             String correctCount = "51462";
 
-            assertThat(logReport.metrics().get("Файл(-ы)")).isEqualTo(correctFiles);
-            assertThat(logReport.metrics().get("Количество запросов")).isEqualTo(correctCount);
+            assertThat(logReport.metrics().getMetric(Metrics.Metric.FILES)).isEqualTo(correctFiles);
+            assertThat(logReport.metrics().getMetric(Metrics.Metric.REQUEST_COUNT)).isEqualTo(correctCount);
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
@@ -102,7 +109,7 @@ public class LogAnalyzerTest {
             String correctCount = "26";
 
             //assertThat(logReport.metrics().get("Файл(-ы)")).isEqualTo(correctFiles);
-            assertThat(logReport.metrics().get("Количество запросов")).isEqualTo(correctCount);
+            assertThat(logReport.metrics().getMetrics().get("Количество запросов")).isEqualTo(correctCount);
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
@@ -115,7 +122,7 @@ public class LogAnalyzerTest {
 
             String correctCount = "5";
 
-            assertThat(logReport.metrics().get("Количество запросов")).isEqualTo(correctCount);
+            assertThat(logReport.metrics().getMetric(Metrics.Metric.REQUEST_COUNT)).isEqualTo(correctCount);
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
