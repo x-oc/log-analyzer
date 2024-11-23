@@ -1,5 +1,7 @@
 package backend.academy;
 
+import backend.academy.logFieldFilters.FieldFilterFactory;
+import backend.academy.logFieldFilters.LogFieldFilter;
 import backend.academy.model.LogRecord;
 import backend.academy.model.LogReport;
 import backend.academy.model.Metrics;
@@ -7,12 +9,10 @@ import backend.academy.model.TotalLogStats;
 import com.google.common.math.Quantiles;
 import java.io.IOException;
 import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -60,38 +60,9 @@ public class LogAnalyzer {
         }
         boolean isNotBefore = from == null || logRecord.timeLocal().isAfter(from);
         boolean isNotAfter = to == null || logRecord.timeLocal().isBefore(to);
-        boolean result;
-        switch (filterField) {
-            case "addr":
-                result = logRecord.remoteAddr().contains(filterValue);
-                break;
-            case "user":
-                result = logRecord.remoteUser().contains(filterValue);
-                break;
-            case "time":
-                DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd/MMM/yyyy:HH:mm:ss Z", Locale.ENGLISH);
-                LocalDateTime timeLocal = LocalDateTime.parse(filterValue, formatter);
-                result = logRecord.timeLocal().equals(timeLocal);
-                break;
-            case "request":
-                result = logRecord.request().method().contains(filterValue) ||
-                         logRecord.request().resource().contains(filterValue);
-                break;
-            case "status":
-                result = String.valueOf(logRecord.status()).equals(filterValue);
-                break;
-            case "bytes":
-                result = String.valueOf(logRecord.bodyBytesSent()).equals(filterValue);
-                break;
-            case "referrer":
-                result = logRecord.httpReferer().contains(filterValue);
-                break;
-            case "agent":
-                result = logRecord.httpUserAgent().contains(filterValue);
-                break;
-            default: result = true;
-        }
-        return result && isNotBefore && isNotAfter;
+        LogFieldFilter fieldFilter = FieldFilterFactory.resolveFilter(filterField);
+
+        return fieldFilter.filter(logRecord, filterValue) && isNotBefore && isNotAfter;
     }
 
     private void updateStats(TotalLogStats stats, LogRecord logRecord) {
